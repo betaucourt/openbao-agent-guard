@@ -1,0 +1,65 @@
+name: openbao-agent-guard
+
+services:
+  # The image runs its daemon as the `openbao` user. Docker creates named
+  # volumes as root, so this one-shot service establishes only the two data
+  # directory owners before the non-root server starts.
+  openbao-init:
+    image: ${OPENBAO_IMAGE:?Set OPENBAO_IMAGE to a supported immutable digest.}
+    user: "0:0"
+    entrypoint: ["chown"]
+    command: ["-R", "openbao:openbao", "/openbao/data", "/openbao/audit"]
+    restart: "no"
+    volumes:
+      - openbao-raft:/openbao/data
+      - openbao-audit:/openbao/audit
+
+  openbao:
+    image: ${OPENBAO_IMAGE:?Set OPENBAO_IMAGE to a supported immutable digest.}
+    restart: unless-stopped
+    command: ["server"]
+    depends_on:
+      openbao-init:
+        condition: service_completed_successfully
+    environment:
+      VAULT_API_ADDR: https://openbao.localhost:${OPENBAO_HOST_PORT:?Set OPENBAO_HOST_PORT.}
+      BAO_LOG_LEVEL: warn
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    ports:
+      - "127.0.0.1:${OPENBAO_HOST_PORT:?Set OPENBAO_HOST_PORT.}:8200"
+    volumes:
+      - openbao-raft:/openbao/data
+      - openbao-audit:/openbao/audit
+      - ./config/openbao.hcl:/openbao/config/openbao.hcl:ro
+    secrets:
+      - openbao_tls_cert
+      - openbao_tls_key
+    networks:
+      - openbao-edge
+
+networks:
+  # Host exposure remains loopback-only through the `ports` declaration above.
+  openbao-edge: {}
+
+volumes:
+  openbao-raft:
+    name: openbao-agent-guard-raft
+    labels:
+      com.openbao.guard.runtime: core
+      com.openbao.guard.service: openbao
+      com.openbao.guard.data: raft
+  openbao-audit:
+    name: openbao-agent-guard-audit
+    labels:
+      com.openbao.guard.runtime: core
+      com.openbao.guard.service: openbao
+      com.openbao.guard.data: audit
+
+secrets:
+  openbao_tls_cert:
+    file: ${OPENBAO_TLS_CERT_FILE:?Set OPENBAO_TLS_CERT_FILE.}
+  openbao_tls_key:
+    file: ${OPENBAO_TLS_KEY_FILE:?Set OPENBAO_TLS_KEY_FILE.}

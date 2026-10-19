@@ -1,0 +1,7 @@
+.env
+secrets/
+*.token
+*.key
+*.crt
+*.log
+.DS_Store

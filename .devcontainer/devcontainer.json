@@ -1,0 +1,13 @@
+{
+  "name": "openbao-agent-guard Dev Environment",
+  "image": "mcr.microsoft.com/devcontainers/base:debian",
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "timonwong.shellcheck",
+        "mads-hartmann.bash-ide-vscode"
+      ]
+    }
+  },
+  "postCreateCommand": "chmod +x scripts/*.sh test/*.sh"
+}

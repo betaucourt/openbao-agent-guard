@@ -1,0 +1,32 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  security-tests:
+    name: Automated Security Test Suite & ShellCheck
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Syntax check shell scripts
+        run: |
+          for f in scripts/*.sh test/run-tests.sh; do
+            bash -n "$f"
+          done
+
+      - name: Run ShellCheck
+        run: |
+          sudo apt-get update && sudo apt-get install -y shellcheck
+          shellcheck -x -S warning scripts/*.sh test/run-tests.sh
+
+      - name: Run automated 7-suite security tests
+        run: |
+          chmod +x test/run-tests.sh scripts/*.sh
+          ./test/run-tests.sh
